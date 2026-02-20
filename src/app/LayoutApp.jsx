@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/nav/Sidebar'
 import BottomNav from '../components/nav/BottomNav'
+import Breadcrumb from '../components/Breadcrumb'
+import { obtenerCursos } from '../utils/datosCursos'
 
 // Función para obtener el título según la ruta
 const obtenerTitulo = (ruta) => {
@@ -15,20 +17,78 @@ const obtenerTitulo = (ruta) => {
 
 // Función para obtener el breadcrumb según la ruta
 const obtenerBreadcrumb = (ruta) => {
-  if (ruta === '/dashboard') return ['Agenda']
-  if (ruta === '/escuelas') return ['Escuelas']
+  // Dashboard
+  if (ruta === '/dashboard') {
+    return [{ label: 'Agenda', isActive: true }]
+  }
+  
+  // Escuelas
+  if (ruta === '/escuelas') {
+    return [{ label: 'Escuelas', isActive: true }]
+  }
+  
+  // Cursos de una escuela
   if (ruta.startsWith('/escuelas/') && ruta.includes('/cursos')) {
-    return ['Escuelas', 'Cursos']
+    const match = ruta.match(/^\/escuelas\/([^/]+)\/cursos$/)
+    if (match) {
+      const escuelaId = match[1]
+      return [
+        { label: 'Escuelas', path: '/escuelas' },
+        { label: 'Cursos', isActive: true }
+      ]
+    }
+    return [{ label: 'Escuelas', path: '/escuelas' }, { label: 'Cursos', isActive: true }]
   }
+  
+  // Planificación (navegable)
+  if (ruta.startsWith('/cursos/') && ruta.includes('/planificacion')) {
+    const match = ruta.match(/^\/cursos\/([^/]+)\/planificacion$/)
+    if (match) {
+      const cursoId = match[1]
+      const todosLosCursos = obtenerCursos()
+      const cursoEncontrado = todosLosCursos.find(c => String(c.id) === String(cursoId))
+      const escuelaId = cursoEncontrado?.escuelaId
+      
+      // "Cursos" siempre navegable: si hay escuelaId va a esa escuela, sino fallback a /escuelas
+      const pathCursos = escuelaId ? `/escuelas/${escuelaId}/cursos` : '/escuelas'
+      
+      return [
+        { label: 'Escuelas', path: '/escuelas' },
+        { label: 'Cursos', path: pathCursos },
+        { label: 'Curso', isActive: true }
+      ]
+    }
+  }
+  
+  // Asistencia
   if (ruta.startsWith('/cursos/') && ruta.includes('/asistencia')) {
-    return ['Escuelas', 'Cursos', 'Curso', 'Asistencia']
+    return [
+      { label: 'Escuelas', path: '/escuelas' },
+      { label: 'Cursos' },
+      { label: 'Curso' },
+      { label: 'Asistencia', isActive: true }
+    ]
   }
+  
+  // Registro
   if (ruta.startsWith('/cursos/') && ruta.includes('/registro')) {
-    return ['Escuelas', 'Cursos', 'Curso', 'Registro']
+    return [
+      { label: 'Escuelas', path: '/escuelas' },
+      { label: 'Cursos' },
+      { label: 'Curso' },
+      { label: 'Registro', isActive: true }
+    ]
   }
+  
+  // Curso (genérico)
   if (ruta.startsWith('/cursos/')) {
-    return ['Escuelas', 'Cursos', 'Curso']
+    return [
+      { label: 'Escuelas', path: '/escuelas' },
+      { label: 'Cursos' },
+      { label: 'Curso', isActive: true }
+    ]
   }
+  
   return []
 }
 
@@ -98,20 +158,7 @@ function LayoutApp({ children }) {
         {/* Contenido principal */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {/* Breadcrumb */}
-          {breadcrumb.length > 0 && (
-            <nav className="mb-4">
-              <ol className="flex items-center gap-2 text-sm text-gray-600">
-                {breadcrumb.map((item, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    {index > 0 && <span className="text-gray-400">/</span>}
-                    <span className={index === breadcrumb.length - 1 ? 'text-gray-900 font-medium' : ''}>
-                      {item}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          )}
+          {breadcrumb.length > 0 && <Breadcrumb items={breadcrumb} />}
           {children}
         </main>
       </div>
