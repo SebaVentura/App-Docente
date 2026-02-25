@@ -15,6 +15,21 @@ function Dashboard() {
   const [cargando, setCargando] = useState(true)
   const [fechaHoy, setFechaHoy] = useState('')
   const [diaSemana, setDiaSemana] = useState('')
+  const [showImponderables, setShowImponderables] = useState(false)
+  const [dictadoActivo, setDictadoActivo] = useState(null)
+  const [tipoImponderable, setTipoImponderable] = useState('')
+  const [observacion, setObservacion] = useState('')
+
+  // Tipos de imponderable (SET 4)
+  const TIPOS_IMPONDERABLE = [
+    'Injustificada',
+    'Lic médico',
+    'Lic adm',
+    'Otra lic',
+    'Paro',
+    'Profilaxis',
+    'Otro'
+  ]
 
   // Obtener datos al montar
   useEffect(() => {
@@ -106,6 +121,28 @@ function Dashboard() {
     
     return true
   })
+
+  // Función abrir modal
+  const abrirModalImponderables = (dictado) => {
+    setDictadoActivo(dictado)
+    setShowImponderables(true)
+  }
+
+  // Función guardar (solo front por ahora)
+  const guardarImponderable = () => {
+    const payload = {
+      cursoId: dictadoActivo?.cursoId,
+      tipo: tipoImponderable,
+      observacion,
+      fecha: new Date()
+    }
+
+    console.log('Nuevo imponderable:', payload)
+
+    setShowImponderables(false)
+    setTipoImponderable('')
+    setObservacion('')
+  }
 
   return (
     <div>
@@ -207,9 +244,60 @@ function Dashboard() {
                 >
                   Registro de clase
                 </button>
+                <button
+                  onClick={() => abrirModalImponderables(clase)}
+                  className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg transition font-medium"
+                >
+                  Inasistencia / Imponderable
+                </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal de imponderables */}
+      {showImponderables && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-[420px] shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">
+              Registro de inasistencia / imponderable
+            </h3>
+
+            <select
+              className="w-full border rounded-lg p-2 mb-4"
+              value={tipoImponderable}
+              onChange={(e) => setTipoImponderable(e.target.value)}
+            >
+              <option value="">Seleccionar motivo</option>
+              {TIPOS_IMPONDERABLE.map(op => (
+                <option key={op} value={op}>{op}</option>
+              ))}
+            </select>
+
+            <textarea
+              placeholder="Observación (opcional)"
+              className="w-full border rounded-lg p-2 mb-4"
+              value={observacion}
+              onChange={(e) => setObservacion(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowImponderables(false)}
+                className="px-3 py-2 bg-gray-200 rounded-lg"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={guardarImponderable}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -46,6 +46,10 @@ function Cursos({ escuelaId }) {
   const [cursoEditado, setCursoEditado] = useState(null)
   const [nuevoHorarioEdicion, setNuevoHorarioEdicion] = useState({ dia: 'Lunes', desde: '', hasta: '' })
 
+  // Estado para historial de inasistencias
+  const [showHistorialInasistencias, setShowHistorialInasistencias] = useState(false)
+  const [cursoActivoHistorial, setCursoActivoHistorial] = useState(null)
+
   // Agregar horario al nuevo curso
   const handleAgregarHorarioNuevo = () => {
     const { dia, desde, hasta } = nuevoHorario
@@ -204,6 +208,12 @@ function Cursos({ escuelaId }) {
       setTodosLosCursos(nuevosCursos)
       guardarCursos(nuevosCursos)
     }
+  }
+
+  // Abrir historial de inasistencias
+  const abrirHistorialInasistencias = (curso) => {
+    setCursoActivoHistorial(curso)
+    setShowHistorialInasistencias(true)
   }
 
   // Formatear horario para mostrar
@@ -692,12 +702,51 @@ function Cursos({ escuelaId }) {
                   >
                     Eliminar
                   </button>
+                  <button
+                    onClick={() => abrirHistorialInasistencias(curso)}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg 
+                             hover:bg-indigo-700 transition font-medium"
+                  >
+                    Historial Inasistencias
+                  </button>
                 </div>
               </>
             )}
           </div>
         ))}
       </div>
+
+      {/* Modal de historial de inasistencias */}
+      {showHistorialInasistencias && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-[500px] shadow-xl max-h-[80vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-2">
+              Historial de Inasistencias / Imponderables
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {cursoActivoHistorial?.nombre}
+            </p>
+            
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">
+                Aquí se mostrarán los registros de inasistencias e imponderables del curso.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setShowHistorialInasistencias(false)
+                  setCursoActivoHistorial(null)
+                }}
+                className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition font-medium"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

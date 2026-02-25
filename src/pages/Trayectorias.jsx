@@ -22,6 +22,14 @@ function Trayectorias({ cursoId }) {
     materia: ''
   })
 
+  // Estados para modal de informe
+  const [showInformeModal, setShowInformeModal] = useState(false)
+  const [alcanceInforme, setAlcanceInforme] = useState('curso') // 'curso' | 'uno' | 'seleccion'
+  const [alumnoSeleccionadoId, setAlumnoSeleccionadoId] = useState('')
+  const [alumnosSeleccionados, setAlumnosSeleccionados] = useState(new Set())
+  const [filtroBusquedaAlumnos, setFiltroBusquedaAlumnos] = useState('')
+  const [textoExtraInforme, setTextoExtraInforme] = useState('')
+
   // Cargar curso y alumnos
   useEffect(() => {
     const todosLosCursos = obtenerCursos()
@@ -188,11 +196,316 @@ function Trayectorias({ cursoId }) {
     return duplicados
   }
 
+  // Abrir modal de informe
+  const abrirModalInforme = () => {
+    setShowInformeModal(true)
+    setAlcanceInforme('curso')
+    setAlumnoSeleccionadoId('')
+    setAlumnosSeleccionados(new Set())
+    setFiltroBusquedaAlumnos('')
+    setTextoExtraInforme('')
+  }
+
+  // Cerrar modal de informe
+  const cerrarModalInforme = () => {
+    setShowInformeModal(false)
+    setAlcanceInforme('curso')
+    setAlumnoSeleccionadoId('')
+    setAlumnosSeleccionados(new Set())
+    setFiltroBusquedaAlumnos('')
+    setTextoExtraInforme('')
+  }
+
+  // Toggle selección de alumno
+  const toggleAlumnoSeleccionado = (alumnoKey) => {
+    setAlumnosSeleccionados(prev => {
+      const nuevo = new Set(prev)
+      if (nuevo.has(alumnoKey)) {
+        nuevo.delete(alumnoKey)
+      } else {
+        nuevo.add(alumnoKey)
+      }
+      return nuevo
+    })
+  }
+
+  // Obtener alumnos para el informe según alcance
+  const obtenerAlumnosParaInforme = () => {
+    const duplicadosPorNombre = detectarDuplicados(alumnosDelCurso)
+    
+    if (alcanceInforme === 'curso') {
+      // Todos los alumnos
+      return alumnosDelCurso.map((alumno, idx) => {
+        let hayDuplicado = false
+        if (!alumno.legajo && !alumno.id) {
+          const apellido = (alumno.apellido || '').toUpperCase().trim()
+          const nombre = (alumno.nombre || '').toUpperCase().trim()
+          const nombreNormalizado = `${apellido},${nombre}`
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+          hayDuplicado = duplicadosPorNombre[nombreNormalizado] === true
+        }
+        const alumnoKey = generarAlumnoKey(alumno, idx, cursoId, hayDuplicado)
+        return { alumno, idx, alumnoKey }
+      })
+    } else if (alcanceInforme === 'uno') {
+      // Un solo alumno
+      if (!alumnoSeleccionadoId) return []
+      const idx = alumnosDelCurso.findIndex((a, i) => {
+        let hayDuplicado = false
+        if (!a.legajo && !a.id) {
+          const apellido = (a.apellido || '').toUpperCase().trim()
+          const nombre = (a.nombre || '').toUpperCase().trim()
+          const nombreNormalizado = `${apellido},${nombre}`
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+          hayDuplicado = duplicadosPorNombre[nombreNormalizado] === true
+        }
+        const key = generarAlumnoKey(a, i, cursoId, hayDuplicado)
+        return key === alumnoSeleccionadoId
+      })
+      if (idx === -1) return []
+      const alumno = alumnosDelCurso[idx]
+      let hayDuplicado = false
+      if (!alumno.legajo && !alumno.id) {
+        const apellido = (alumno.apellido || '').toUpperCase().trim()
+        const nombre = (alumno.nombre || '').toUpperCase().trim()
+        const nombreNormalizado = `${apellido},${nombre}`
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+        hayDuplicado = duplicadosPorNombre[nombreNormalizado] === true
+      }
+      const alumnoKey = generarAlumnoKey(alumno, idx, cursoId, hayDuplicado)
+      return [{ alumno, idx, alumnoKey }]
+    } else {
+      // Selección múltiple
+      return alumnosDelCurso
+        .map((alumno, idx) => {
+          let hayDuplicado = false
+          if (!alumno.legajo && !alumno.id) {
+            const apellido = (alumno.apellido || '').toUpperCase().trim()
+            const nombre = (alumno.nombre || '').toUpperCase().trim()
+            const nombreNormalizado = `${apellido},${nombre}`
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+            hayDuplicado = duplicadosPorNombre[nombreNormalizado] === true
+          }
+          const alumnoKey = generarAlumnoKey(alumno, idx, cursoId, hayDuplicado)
+          return { alumno, idx, alumnoKey }
+        })
+        .filter(({ alumnoKey }) => alumnosSeleccionados.has(alumnoKey))
+    }
+  }
+
+  // Generar HTML del informe
+  const generarInformeHTML = (alumnosParaInforme, textoExtra) => {
+    // Obtener fecha y hora actual (locale es-AR)
+    const ahora = new Date()
+    const fechaHora = ahora.toLocaleString('es-AR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    
+    // Construir HTML del informe
+    let html = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Informe de Trayectorias</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 20px;
+          color: #000;
+        }
+        h1 {
+          font-size: 24px;
+          margin-bottom: 10px;
+        }
+        h2 {
+          font-size: 18px;
+          margin-bottom: 10px;
+        }
+        .header-info {
+          font-size: 14px;
+          color: #666;
+          margin-bottom: 30px;
+        }
+        .alumno {
+          margin-bottom: 25px;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #ccc;
+        }
+        .alumno-header {
+          font-size: 16px;
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
+        .alumno-info {
+          font-size: 14px;
+          margin-bottom: 10px;
+          color: #333;
+        }
+        .registros {
+          margin-top: 10px;
+          margin-left: 20px;
+        }
+        .registro-item {
+          font-size: 13px;
+          margin-bottom: 5px;
+          color: #555;
+        }
+        .sin-registros {
+          font-size: 13px;
+          color: #999;
+          font-style: italic;
+          margin-left: 20px;
+        }
+        .conclusion {
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #ccc;
+        }
+        .conclusion p {
+          font-size: 14px;
+          color: #333;
+          white-space: pre-wrap;
+        }
+        .footer {
+          margin-top: 40px;
+          padding-top: 20px;
+          border-top: 1px solid #ccc;
+          font-size: 12px;
+          color: #666;
+          text-align: center;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Informe de Trayectorias</h1>
+      <div class="header-info">
+        <strong>Curso:</strong> ${cursoNombre || `Curso ${cursoId}`}<br>
+        <strong>Fecha y hora de generación:</strong> ${fechaHora}
+      </div>
+  `
+    
+    // Iterar sobre alumnosParaInforme
+    alumnosParaInforme.forEach(({ alumno, alumnoKey }) => {
+      // Obtener datos del alumno
+      const condiciones = alumno.condiciones || []
+      const condicionesTexto = condiciones.length > 0 ? condiciones.join(", ") : "—"
+      const registrosAlumno = registrosPorAlumno[alumnoKey] || []
+      const todosRegistros = [...registrosAlumno].reverse() // Más reciente primero
+      const tieneRecursa = condiciones.includes('RECURSA')
+      const tieneIntensifica = condiciones.includes('INTENSIFICA')
+      const seguimientoManual = seguimientoPorAlumno[alumnoKey] === true
+      const enSeguimiento = tieneRecursa || tieneIntensifica || seguimientoManual
+      const estadoSeguimiento = enSeguimiento ? "En seguimiento" : "No en seguimiento"
+      
+      // Agregar sección del alumno al HTML
+      html += `
+      <div class="alumno">
+        <div class="alumno-header">${alumno.apellido}, ${alumno.nombre}</div>
+        <div class="alumno-info">
+          <strong>Condición:</strong> ${condicionesTexto}<br>
+          <strong>Estado:</strong> ${estadoSeguimiento}
+        </div>
+    `
+      
+      // Agregar registros
+      if (todosRegistros.length > 0) {
+        html += '<div class="registros">'
+        todosRegistros.forEach((registro) => {
+          const fechaFormateada = formatearFecha(registro.fechaISO)
+          const registroTexto = formatearRegistro(registro)
+          const detalleTexto = registro.detalle && registro.tipo !== 'Nota' 
+            ? `: ${registro.detalle}` 
+            : ''
+          html += `
+          <div class="registro-item">
+            ${fechaFormateada} - ${registroTexto}${detalleTexto}
+          </div>
+        `
+        })
+        html += '</div>'
+      } else {
+        html += '<div class="sin-registros">Sin registros</div>'
+      }
+      
+      html += '</div>'
+    })
+    
+    // Agregar conclusión si existe
+    if (textoExtra && textoExtra.trim()) {
+      html += `
+      <div class="conclusion">
+        <h2>Conclusión del docente</h2>
+        <p>${textoExtra.trim()}</p>
+      </div>
+    `
+    }
+    
+    // Cerrar HTML
+    html += `
+      <div class="footer">
+        Generado por La App del Docente
+      </div>
+    </body>
+    </html>
+  `
+    
+    return html
+  }
+
+  // Imprimir HTML
+  const imprimirHTML = (html) => {
+    const ventanaImpresion = window.open('', '_blank')
+    if (ventanaImpresion) {
+      ventanaImpresion.document.write(html)
+      ventanaImpresion.document.close()
+      ventanaImpresion.focus()
+      setTimeout(() => {
+        ventanaImpresion.print()
+      }, 250)
+    } else {
+      alert('Habilitá popups para imprimir.')
+    }
+  }
+
+  // Generar e imprimir informe
+  const handleImprimirInforme = () => {
+    const alumnosParaInforme = obtenerAlumnosParaInforme()
+    
+    if (alumnosParaInforme.length === 0) {
+      alert('No hay alumnos seleccionados para el informe.')
+      return
+    }
+    
+    const html = generarInformeHTML(alumnosParaInforme, textoExtraInforme)
+    imprimirHTML(html)
+    cerrarModalInforme()
+  }
+
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">
-        Trayectorias – {cursoNombre || `Curso ${cursoId}`}
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold text-gray-900">
+          Trayectorias – {cursoNombre || `Curso ${cursoId}`}
+        </h2>
+        {alumnosDelCurso.length > 0 && (
+          <button
+            onClick={abrirModalInforme}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg 
+                     hover:bg-gray-700 transition font-medium"
+          >
+            🖨️ Imprimir informe
+          </button>
+        )}
+      </div>
       
       {alumnosDelCurso.length === 0 ? (
         <p className="text-gray-600">Este curso no tiene alumnos cargados</p>
@@ -438,6 +751,199 @@ function Trayectorias({ cursoId }) {
                 className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition"
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Generar Informe */}
+      {showInformeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Generar informe
+            </h3>
+            
+            <div className="space-y-4">
+              {/* Alcance */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Alcance del informe
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="alcance"
+                      value="curso"
+                      checked={alcanceInforme === 'curso'}
+                      onChange={(e) => setAlcanceInforme(e.target.value)}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">Todo el curso</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="alcance"
+                      value="uno"
+                      checked={alcanceInforme === 'uno'}
+                      onChange={(e) => setAlcanceInforme(e.target.value)}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">Un alumno</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="alcance"
+                      value="seleccion"
+                      checked={alcanceInforme === 'seleccion'}
+                      onChange={(e) => setAlcanceInforme(e.target.value)}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">Seleccionar alumnos</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Dropdown para un alumno */}
+              {alcanceInforme === 'uno' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Seleccionar alumno
+                  </label>
+                  <select
+                    value={alumnoSeleccionadoId}
+                    onChange={(e) => setAlumnoSeleccionadoId(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  >
+                    <option value="">Seleccione un alumno...</option>
+                    {(() => {
+                      const duplicadosPorNombre = detectarDuplicados(alumnosDelCurso)
+                      return alumnosDelCurso.map((alumno, idx) => {
+                        let hayDuplicado = false
+                        if (!alumno.legajo && !alumno.id) {
+                          const apellido = (alumno.apellido || '').toUpperCase().trim()
+                          const nombre = (alumno.nombre || '').toUpperCase().trim()
+                          const nombreNormalizado = `${apellido},${nombre}`
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '')
+                          hayDuplicado = duplicadosPorNombre[nombreNormalizado] === true
+                        }
+                        const alumnoKey = generarAlumnoKey(alumno, idx, cursoId, hayDuplicado)
+                        const condicionesTexto = (alumno.condiciones || []).length > 0 
+                          ? alumno.condiciones.join(", ") 
+                          : "—"
+                        return (
+                          <option key={alumnoKey} value={alumnoKey}>
+                            {alumno.apellido}, {alumno.nombre} - {condicionesTexto}
+                          </option>
+                        )
+                      })
+                    })()}
+                  </select>
+                </div>
+              )}
+
+              {/* Checklist para selección múltiple */}
+              {alcanceInforme === 'seleccion' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Seleccionar alumnos
+                  </label>
+                  <input
+                    type="text"
+                    value={filtroBusquedaAlumnos}
+                    onChange={(e) => setFiltroBusquedaAlumnos(e.target.value)}
+                    placeholder="Buscar por apellido o nombre..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3"
+                  />
+                  <div className="border border-gray-200 rounded-lg p-3 max-h-60 overflow-y-auto">
+                    {(() => {
+                      const duplicadosPorNombre = detectarDuplicados(alumnosDelCurso)
+                      const alumnosFiltrados = filtroBusquedaAlumnos.trim()
+                        ? alumnosDelCurso.filter(alumno => {
+                            const busqueda = filtroBusquedaAlumnos.toLowerCase()
+                            const apellido = (alumno.apellido || '').toLowerCase()
+                            const nombre = (alumno.nombre || '').toLowerCase()
+                            return apellido.includes(busqueda) || nombre.includes(busqueda)
+                          })
+                        : alumnosDelCurso
+                      
+                      return alumnosFiltrados.map((alumno, idx) => {
+                        let hayDuplicado = false
+                        if (!alumno.legajo && !alumno.id) {
+                          const apellido = (alumno.apellido || '').toUpperCase().trim()
+                          const nombre = (alumno.nombre || '').toUpperCase().trim()
+                          const nombreNormalizado = `${apellido},${nombre}`
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '')
+                          hayDuplicado = duplicadosPorNombre[nombreNormalizado] === true
+                        }
+                        const alumnoKey = generarAlumnoKey(alumno, idx, cursoId, hayDuplicado)
+                        const condicionesTexto = (alumno.condiciones || []).length > 0 
+                          ? alumno.condiciones.join(", ") 
+                          : "—"
+                        const estaSeleccionado = alumnosSeleccionados.has(alumnoKey)
+                        
+                        return (
+                          <label key={alumnoKey} className="flex items-center gap-2 py-1">
+                            <input
+                              type="checkbox"
+                              checked={estaSeleccionado}
+                              onChange={() => toggleAlumnoSeleccionado(alumnoKey)}
+                              className="w-4 h-4 text-blue-600"
+                            />
+                            <span className="text-sm text-gray-700">
+                              {alumno.apellido}, {alumno.nombre} - {condicionesTexto}
+                            </span>
+                          </label>
+                        )
+                      })
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Textarea para texto extra */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Conclusión / aporte del docente (opcional)
+                </label>
+                <textarea
+                  value={textoExtraInforme}
+                  onChange={(e) => setTextoExtraInforme(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  rows="4"
+                  placeholder="Ingresá aquí cualquier conclusión o aporte adicional..."
+                />
+              </div>
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={cerrarModalInforme}
+                className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleImprimirInforme}
+                disabled={
+                  (alcanceInforme === 'uno' && !alumnoSeleccionadoId) ||
+                  (alcanceInforme === 'seleccion' && alumnosSeleccionados.size === 0)
+                }
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition ${
+                  (alcanceInforme === 'uno' && !alumnoSeleccionadoId) ||
+                  (alcanceInforme === 'seleccion' && alumnosSeleccionados.size === 0)
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                Generar e imprimir
               </button>
             </div>
           </div>

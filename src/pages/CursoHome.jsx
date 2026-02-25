@@ -26,6 +26,12 @@ function CursoHome({ cursoId }) {
   // Estado para búsqueda de alumnos
   const [busquedaAlumno, setBusquedaAlumno] = useState('')
 
+  // Estados para modal de importación
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [isWord, setIsWord] = useState(false)
+  const [importError, setImportError] = useState('')
+
   // Cargar curso al montar
   useEffect(() => {
     const todosLosCursos = obtenerCursos()
@@ -60,6 +66,71 @@ function CursoHome({ cursoId }) {
     inicializarFormAlumno()
     setAlumnoEditando(null)
     setMostrarModal(true)
+  }
+
+  // Abrir modal de importación
+  const openImportModal = () => {
+    setShowImportModal(true)
+    setSelectedFile(null)
+    setIsWord(false)
+    setImportError('')
+  }
+
+  // Cerrar modal de importación
+  const closeImportModal = () => {
+    setShowImportModal(false)
+    setSelectedFile(null)
+    setIsWord(false)
+    setImportError('')
+  }
+
+  // Manejar selección de archivo
+  const onFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) {
+      setSelectedFile(null)
+      setIsWord(false)
+      setImportError('')
+      return
+    }
+
+    const fileName = file.name.toLowerCase()
+    const extension = fileName.split('.').pop()?.toLowerCase()
+    
+    // Extensiones permitidas
+    const allowedExtensions = ['xlsx', 'xls', 'csv', 'doc', 'docx']
+    
+    if (!allowedExtensions.includes(extension)) {
+      setImportError(`Extensión no permitida. Use: ${allowedExtensions.join(', ')}`)
+      setSelectedFile(null)
+      setIsWord(false)
+      e.target.value = '' // Limpiar input
+      return
+    }
+
+    // Validación exitosa
+    setImportError('')
+    setSelectedFile(file)
+    
+    // Detectar si es Word
+    const wordExtensions = ['doc', 'docx']
+    setIsWord(wordExtensions.includes(extension))
+  }
+
+  // Procesar archivo
+  const onProcesar = () => {
+    if (!selectedFile || isWord) return
+    
+    const fileName = selectedFile.name
+    const fileType = fileName.split('.').pop()?.toLowerCase()
+    
+    console.log({
+      cursoId: cursoId,
+      fileName: fileName,
+      fileType: fileType
+    })
+    
+    closeImportModal()
   }
 
   // Abrir modal para editar alumno
@@ -274,13 +345,22 @@ function CursoHome({ cursoId }) {
       <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-gray-900">Alumnos del curso</h3>
-          <button
-            onClick={handleAgregarAlumno}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg 
-                     hover:bg-green-700 transition font-medium"
-          >
-            + Agregar alumno
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAgregarAlumno}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg 
+                       hover:bg-green-700 transition font-medium"
+            >
+              + Agregar alumno
+            </button>
+            <button
+              onClick={openImportModal}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg 
+                       hover:bg-indigo-700 transition font-medium"
+            >
+              📄 Cargar lista (Excel/Word)
+            </button>
+          </div>
         </div>
         
         {/* Buscador de alumnos */}
@@ -517,6 +597,89 @@ function CursoHome({ cursoId }) {
                          hover:bg-gray-700 transition font-medium"
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Importar Alumnos */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-[500px] shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">
+              Importar alumnos
+            </h3>
+
+            {/* Input file */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Seleccionar archivo
+              </label>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv,.doc,.docx"
+                onChange={onFileChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg 
+                         focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Error */}
+            {importError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">{importError}</p>
+              </div>
+            )}
+
+            {/* Info del archivo seleccionado */}
+            {selectedFile && !importError && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm font-medium text-gray-900 mb-1">
+                  {selectedFile.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {(selectedFile.size / 1024).toFixed(2)} KB • {selectedFile.name.split('.').pop()?.toUpperCase()}
+                </p>
+              </div>
+            )}
+
+            {/* Mensaje de éxito para Excel/CSV */}
+            {selectedFile && !isWord && !importError && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  Archivo listo para procesar.
+                </p>
+              </div>
+            )}
+
+            {/* Warning para Word */}
+            {selectedFile && isWord && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800 font-medium">
+                  Word detectado. Para importar automáticamente, convertí este archivo a Excel (.xlsx) o CSV (.csv).
+                </p>
+              </div>
+            )}
+
+            {/* Botones */}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={closeImportModal}
+                className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={onProcesar}
+                disabled={!selectedFile || isWord || !!importError}
+                className={`px-4 py-2 rounded-lg transition font-medium ${
+                  !selectedFile || isWord || !!importError
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                Procesar
               </button>
             </div>
           </div>
