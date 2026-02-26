@@ -10,6 +10,9 @@ import Trayectorias from '../pages/Trayectorias'
 import Diagnosticos from '../pages/Diagnosticos'
 import Planificacion from '../pages/Planificacion'
 import RegistroClase from '../pages/RegistroClase'
+import ClasesCurso from '../pages/ClasesCurso'
+import DetalleClase from '../pages/DetalleClase'
+import AdminClasesCurso from '../pages/AdminClasesCurso'
 import DeclaracionJurada from '../pages/DeclaracionJurada'
 import Perfil from '../pages/Perfil'
 
@@ -121,6 +124,43 @@ function Router() {
         return (
           <LayoutApp>
             <Planificacion cursoId={cursoId} />
+          </LayoutApp>
+        )
+      }
+    }
+
+    // Ruta de clases: /cursos/:cursoId/clases
+    if (ruta.startsWith('/cursos/') && ruta.includes('/clases')) {
+      // Admin: /cursos/:cursoId/clases/admin (PRIMERO, más específico)
+      const matchAdmin = ruta.match(/^\/cursos\/([^/]+)\/clases\/admin$/)
+      if (matchAdmin) {
+        const cursoId = matchAdmin[1]
+        return (
+          <LayoutApp>
+            <AdminClasesCurso cursoId={cursoId} />
+          </LayoutApp>
+        )
+      }
+      
+      // Detalle: /cursos/:cursoId/clases/:numeroClase
+      const matchDetalle = ruta.match(/^\/cursos\/([^/]+)\/clases\/(\d+)$/)
+      if (matchDetalle) {
+        const cursoId = matchDetalle[1]
+        const numeroClase = matchDetalle[2]
+        return (
+          <LayoutApp>
+            <DetalleClase cursoId={cursoId} numeroClase={parseInt(numeroClase, 10)} />
+          </LayoutApp>
+        )
+      }
+      
+      // Lista: /cursos/:cursoId/clases
+      const match = ruta.match(/^\/cursos\/([^/]+)\/clases$/)
+      if (match) {
+        const cursoId = match[1]
+        return (
+          <LayoutApp>
+            <ClasesCurso cursoId={cursoId} />
           </LayoutApp>
         )
       }

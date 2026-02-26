@@ -238,7 +238,7 @@ function Dashboard() {
                   Pasar asistencia
                 </button>
                 <button
-                  onClick={() => navegar(`/cursos/${clase.cursoId}/registro`)}
+                  onClick={() => navegar(`/cursos/${clase.cursoId}/trayectorias`)}
                   className="bg-gray-600 text-white px-4 py-2 rounded-lg 
                            hover:bg-gray-700 transition font-medium"
                 >

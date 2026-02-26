@@ -339,6 +339,13 @@ function CursoHome({ cursoId }) {
         >
           Planificación
         </button>
+        <button
+          onClick={() => navegar(`/cursos/${cursoId}/clases`)}
+          className="bg-teal-600 text-white px-6 py-2.5 rounded-lg 
+                   font-medium hover:bg-teal-700 transition ml-4"
+        >
+          Clases
+        </button>
       </div>
 
       {/* Sección Alumnos */}
