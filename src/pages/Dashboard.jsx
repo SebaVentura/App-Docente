@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavegacion } from '../app/routes'
 import { obtenerHoyArgentina, obtenerDiaSemanaArgentina, normalizarDia, formatearFechaLargaArgentina } from '../utils/fechas'
+import { isoToAR } from '../utils/dateAR'
 import { obtenerEscuelas } from '../utils/datosEscuelas'
 import { obtenerCursos } from '../utils/datosCursos'
 import { obtenerAsistenciasPorFecha } from '../utils/datosAsistencia'
+import { addLeave, getLeaveForDate } from '../utils/datosLicencias'
 
 function Dashboard() {
   const { navegar } = useNavegacion()
@@ -20,7 +22,16 @@ function Dashboard() {
   const [tipoImponderable, setTipoImponderable] = useState('')
   const [observacion, setObservacion] = useState('')
 
-  // Tipos de imponderable (SET 4)
+  // Modal licencias
+  const [showLicencias, setShowLicencias] = useState(false)
+  const [licenciaForm, setLicenciaForm] = useState({
+    tipo: '',
+    desde: '',
+    hasta: '',
+    observacion: ''
+  })
+
+  // Tipos de imponderable y licencias
   const TIPOS_IMPONDERABLE = [
     'Injustificada',
     'Lic médico',
@@ -128,6 +139,24 @@ function Dashboard() {
     setShowImponderables(true)
   }
 
+  // Licencia activa para la fecha del día (DD-MM-AAAA)
+  const fechaHoyAR = fechaHoy ? isoToAR(fechaHoy) : ''
+  const licenciaActiva = fechaHoyAR ? getLeaveForDate(fechaHoyAR) : null
+
+  const guardarLicencia = () => {
+    if (!licenciaForm.tipo.trim()) {
+      alert('Seleccione el tipo de licencia')
+      return
+    }
+    const id = addLeave(licenciaForm)
+    if (!id) {
+      alert('Verifique las fechas: deben ser DD-MM-AAAA y desde debe ser menor o igual que hasta')
+      return
+    }
+    setShowLicencias(false)
+    setLicenciaForm({ tipo: '', desde: '', hasta: '', observacion: '' })
+  }
+
   // Función guardar (solo front por ahora)
   const guardarImponderable = () => {
     const payload = {
@@ -155,6 +184,13 @@ function Dashboard() {
         <p className="text-gray-600 mb-6">
           {formatearFechaLargaArgentina(fechaHoy)}
         </p>
+      )}
+
+      {/* Banner licencia activa */}
+      {licenciaActiva && (
+        <div className="mb-6 p-4 bg-amber-100 border border-amber-300 rounded-lg text-amber-900">
+          <strong>Licencia activa:</strong> {licenciaActiva.tipo} ({licenciaActiva.desde} – {licenciaActiva.hasta})
+        </div>
       )}
 
       {/* Filtros */}
@@ -191,6 +227,13 @@ function Dashboard() {
             Solo pendientes
           </span>
         </label>
+
+        <button
+          onClick={() => setShowLicencias(true)}
+          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition font-medium"
+        >
+          Cargar licencia
+        </button>
       </div>
 
       {/* Lista de clases */}
@@ -232,27 +275,91 @@ function Dashboard() {
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => navegar(`/cursos/${clase.cursoId}/asistencia`)}
+                  disabled={!!licenciaActiva}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg 
-                           hover:bg-blue-700 transition font-medium"
+                           hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Pasar asistencia
                 </button>
                 <button
                   onClick={() => navegar(`/cursos/${clase.cursoId}/trayectorias`)}
+                  disabled={!!licenciaActiva}
                   className="bg-gray-600 text-white px-4 py-2 rounded-lg 
-                           hover:bg-gray-700 transition font-medium"
+                           hover:bg-gray-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Registro de clase
                 </button>
                 <button
                   onClick={() => abrirModalImponderables(clase)}
-                  className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg transition font-medium"
+                  disabled={!!licenciaActiva}
+                  className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Inasistencia / Imponderable
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal Cargar licencia */}
+      {showLicencias && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-[420px] shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">Cargar licencia</h3>
+
+            <select
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+              value={licenciaForm.tipo}
+              onChange={(e) => setLicenciaForm(f => ({ ...f, tipo: e.target.value }))}
+            >
+              <option value="">Seleccionar tipo</option>
+              {TIPOS_IMPONDERABLE.map(op => (
+                <option key={op} value={op}>{op}</option>
+              ))}
+            </select>
+
+            <input
+              type="text"
+              placeholder="Desde (DD-MM-AAAA)"
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+              value={licenciaForm.desde}
+              onChange={(e) => setLicenciaForm(f => ({ ...f, desde: e.target.value }))}
+            />
+
+            <input
+              type="text"
+              placeholder="Hasta (DD-MM-AAAA)"
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+              value={licenciaForm.hasta}
+              onChange={(e) => setLicenciaForm(f => ({ ...f, hasta: e.target.value }))}
+            />
+
+            <textarea
+              placeholder="Observación (opcional)"
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+              value={licenciaForm.observacion}
+              onChange={(e) => setLicenciaForm(f => ({ ...f, observacion: e.target.value }))}
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowLicencias(false)
+                  setLicenciaForm({ tipo: '', desde: '', hasta: '', observacion: '' })
+                }}
+                className="px-3 py-2 bg-gray-200 rounded-lg"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarLicencia}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

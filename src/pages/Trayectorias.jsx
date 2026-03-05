@@ -3,6 +3,7 @@ import { obtenerCursos } from '../utils/datosCursos'
 import { obtenerHoyArgentina } from '../utils/fechas'
 import { agregarRegistro, generarAlumnoKey, obtenerRegistros } from '../utils/datosTrayectorias'
 import { obtenerSeguimiento, toggleSeguimiento } from '../utils/datosSeguimiento'
+import ModalEventoMasivo from '../components/eventosMasivos/ModalEventoMasivo'
 
 function Trayectorias({ cursoId }) {
   const [alumnosDelCurso, setAlumnosDelCurso] = useState([])
@@ -24,6 +25,7 @@ function Trayectorias({ cursoId }) {
 
   // Estados para modal de informe
   const [showInformeModal, setShowInformeModal] = useState(false)
+  const [showEventoMasivoModal, setShowEventoMasivoModal] = useState(false)
   const [alcanceInforme, setAlcanceInforme] = useState('curso') // 'curso' | 'uno' | 'seleccion'
   const [alumnoSeleccionadoId, setAlumnoSeleccionadoId] = useState('')
   const [alumnosSeleccionados, setAlumnosSeleccionados] = useState(new Set())
@@ -497,13 +499,22 @@ function Trayectorias({ cursoId }) {
           Trayectorias – {cursoNombre || `Curso ${cursoId}`}
         </h2>
         {alumnosDelCurso.length > 0 && (
-          <button
-            onClick={abrirModalInforme}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg 
-                     hover:bg-gray-700 transition font-medium"
-          >
-            🖨️ Imprimir informe
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowEventoMasivoModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg 
+                       hover:bg-blue-700 transition font-medium"
+            >
+              Nuevo evento masivo
+            </button>
+            <button
+              onClick={abrirModalInforme}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg 
+                       hover:bg-gray-700 transition font-medium"
+            >
+              🖨️ Imprimir informe
+            </button>
+          </div>
         )}
       </div>
       
@@ -755,6 +766,14 @@ function Trayectorias({ cursoId }) {
             </div>
           </div>
         </div>
+      )}
+
+      {showEventoMasivoModal && (
+        <ModalEventoMasivo
+          cursoId={cursoId}
+          alumnos={alumnosDelCurso}
+          onClose={() => setShowEventoMasivoModal(false)}
+        />
       )}
 
       {/* Modal Generar Informe */}
