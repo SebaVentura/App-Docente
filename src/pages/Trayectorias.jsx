@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { obtenerCursos } from '../utils/datosCursos'
 import { obtenerHoyArgentina } from '../utils/fechas'
+import { arToISO } from '../utils/dateAR'
+import { getEventosMasivos } from '../utils/datosEventosMasivos'
 import { agregarRegistro, generarAlumnoKey, obtenerRegistros } from '../utils/datosTrayectorias'
 import { obtenerSeguimiento, toggleSeguimiento } from '../utils/datosSeguimiento'
 import ModalEventoMasivo from '../components/eventosMasivos/ModalEventoMasivo'
+import ModalPlanillaCalificaciones from '../components/planillaCalificaciones/ModalPlanillaCalificaciones'
 
 function Trayectorias({ cursoId }) {
   const [alumnosDelCurso, setAlumnosDelCurso] = useState([])
@@ -26,6 +29,7 @@ function Trayectorias({ cursoId }) {
   // Estados para modal de informe
   const [showInformeModal, setShowInformeModal] = useState(false)
   const [showEventoMasivoModal, setShowEventoMasivoModal] = useState(false)
+  const [showPlanillaModal, setShowPlanillaModal] = useState(false)
   const [alcanceInforme, setAlcanceInforme] = useState('curso') // 'curso' | 'uno' | 'seleccion'
   const [alumnoSeleccionadoId, setAlumnoSeleccionadoId] = useState('')
   const [alumnosSeleccionados, setAlumnosSeleccionados] = useState(new Set())
@@ -299,6 +303,38 @@ function Trayectorias({ cursoId }) {
     }
   }
 
+  // Normalizar registros para informe: unifica individuales + eventos masivos con estructura común { fechaISO, tipo, detalle, origen }
+  const obtenerRegistrosParaInforme = (alumnoKey) => {
+    const individuales = (registrosPorAlumno[alumnoKey] || []).map((r) => ({
+      ...r,
+      fechaISO: r.fechaISO,
+      tipo: r.tipo,
+      detalle: r.detalle || '',
+      origen: 'individual'
+    }))
+    const eventosMasivos = getEventosMasivos(cursoId)
+    const desdeEventos = []
+    eventosMasivos.forEach((evt) => {
+      const fechaISO = arToISO(evt.fecha)
+      if (!fechaISO) return
+      const detalle = evt.detalles.find((d) => d.studentId === alumnoKey)
+      if (!detalle) return
+      const partes = [evt.titulo || ''].filter(Boolean)
+      if (detalle.valor?.trim()) partes.push(detalle.valor.trim())
+      if (detalle.obs?.trim()) partes.push(detalle.obs.trim())
+      desdeEventos.push({
+        fechaISO,
+        tipo: evt.tipo || 'Evento',
+        detalle: partes.join(' - '),
+        origen: 'evento_masivo',
+        id: `em_${evt.id}_${alumnoKey}`
+      })
+    })
+    const unificados = [...individuales, ...desdeEventos]
+    unificados.sort((a, b) => (b.fechaISO || '').localeCompare(a.fechaISO || ''))
+    return unificados
+  }
+
   // Generar HTML del informe
   const generarInformeHTML = (alumnosParaInforme, textoExtra) => {
     // Obtener fecha y hora actual (locale es-AR)
@@ -397,11 +433,10 @@ function Trayectorias({ cursoId }) {
     
     // Iterar sobre alumnosParaInforme
     alumnosParaInforme.forEach(({ alumno, alumnoKey }) => {
-      // Obtener datos del alumno
+      // Obtener datos del alumno (individuales + eventos masivos, normalizados)
       const condiciones = alumno.condiciones || []
       const condicionesTexto = condiciones.length > 0 ? condiciones.join(", ") : "—"
-      const registrosAlumno = registrosPorAlumno[alumnoKey] || []
-      const todosRegistros = [...registrosAlumno].reverse() // Más reciente primero
+      const todosRegistros = obtenerRegistrosParaInforme(alumnoKey)
       const tieneRecursa = condiciones.includes('RECURSA')
       const tieneIntensifica = condiciones.includes('INTENSIFICA')
       const seguimientoManual = seguimientoPorAlumno[alumnoKey] === true
@@ -508,6 +543,13 @@ function Trayectorias({ cursoId }) {
               Nuevo evento masivo
             </button>
             <button
+              onClick={() => setShowPlanillaModal(true)}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg 
+                       hover:bg-gray-800 transition font-medium"
+            >
+              Planilla de calificaciones
+            </button>
+            <button
               onClick={abrirModalInforme}
               className="bg-gray-600 text-white px-4 py-2 rounded-lg 
                        hover:bg-gray-700 transition font-medium"
@@ -540,11 +582,10 @@ function Trayectorias({ cursoId }) {
               
               const condiciones = alumno.condiciones || []
               const alumnoKey = generarAlumnoKey(alumno, idx, cursoId, hayDuplicado)
-              const registrosAlumno = registrosPorAlumno[alumnoKey] || []
-              const todosRegistros = [...registrosAlumno].reverse() // Todos, más reciente primero
+              const todosRegistros = obtenerRegistrosParaInforme(alumnoKey)
               const estaExpandido = expandidoPorAlumno[alumnoKey] === true
               const registrosAMostrar = estaExpandido ? todosRegistros : todosRegistros.slice(0, 3) // Últimos 3 o todos
-              const tieneMasRegistros = registrosAlumno.length > 3
+              const tieneMasRegistros = todosRegistros.length > 3
               const tieneRecursa = condiciones.includes('RECURSA')
               const tieneIntensifica = condiciones.includes('INTENSIFICA')
               const seguimientoManual = seguimientoPorAlumno[alumnoKey] === true
@@ -773,6 +814,15 @@ function Trayectorias({ cursoId }) {
           cursoId={cursoId}
           alumnos={alumnosDelCurso}
           onClose={() => setShowEventoMasivoModal(false)}
+        />
+      )}
+
+      {showPlanillaModal && (
+        <ModalPlanillaCalificaciones
+          cursoId={cursoId}
+          cursoNombre={cursoNombre}
+          alumnos={alumnosDelCurso}
+          onClose={() => setShowPlanillaModal(false)}
         />
       )}
 

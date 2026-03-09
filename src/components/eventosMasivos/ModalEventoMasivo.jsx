@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { isValidAR } from '../../utils/dateAR'
+import { isoToAR } from '../../utils/dateAR'
 import { guardarEventoMasivo } from '../../utils/datosEventosMasivos'
+import { obtenerHoyArgentina } from '../../utils/fechas'
 import { generarAlumnoKey } from '../../utils/datosTrayectorias'
 import GrillaAlumnosEvento from './GrillaAlumnosEvento'
 
@@ -41,7 +42,7 @@ function detectarDuplicados(alumnos) {
 export default function ModalEventoMasivo({ cursoId, alumnos, onClose, onSuccess }) {
   const [paso, setPaso] = useState(1)
   const [form, setForm] = useState({
-    fecha: '',
+    fechaISO: obtenerHoyArgentina(),
     tipo: '',
     titulo: '',
     modo: 'nota_num'
@@ -65,12 +66,8 @@ export default function ModalEventoMasivo({ cursoId, alumnos, onClose, onSuccess
 
   // Inicializar detalles cuando pasamos al paso 2
   const irPaso2 = () => {
-    if (!form.fecha.trim()) {
+    if (!form.fechaISO || !form.fechaISO.trim()) {
       alert('La fecha es obligatoria')
-      return
-    }
-    if (!isValidAR(form.fecha)) {
-      alert('La fecha debe estar en formato DD-MM-AAAA')
       return
     }
     if (!form.titulo.trim()) {
@@ -104,14 +101,14 @@ export default function ModalEventoMasivo({ cursoId, alumnos, onClose, onSuccess
     }
     const id = guardarEventoMasivo({
       courseId: cursoId,
-      fecha: form.fecha.trim(),
+      fecha: isoToAR(form.fechaISO),
       tipo: form.tipo.trim(),
       titulo: form.titulo.trim(),
       modo: form.modo,
       detalles
     })
     if (!id) {
-      alert('Error al guardar. Verifique la fecha (DD-MM-AAAA).')
+      alert('Error al guardar.')
       return
     }
     onSuccess?.()
@@ -129,13 +126,12 @@ export default function ModalEventoMasivo({ cursoId, alumnos, onClose, onSuccess
           <>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha (DD-MM-AAAA)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
                 <input
-                  type="text"
-                  placeholder="DD-MM-AAAA"
+                  type="date"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  value={form.fecha}
-                  onChange={(e) => setForm(f => ({ ...f, fecha: e.target.value }))}
+                  value={form.fechaISO}
+                  onChange={(e) => setForm(f => ({ ...f, fechaISO: e.target.value }))}
                 />
               </div>
               <div>

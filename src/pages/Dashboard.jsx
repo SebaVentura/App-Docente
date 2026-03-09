@@ -6,6 +6,7 @@ import { obtenerEscuelas } from '../utils/datosEscuelas'
 import { obtenerCursos } from '../utils/datosCursos'
 import { obtenerAsistenciasPorFecha } from '../utils/datosAsistencia'
 import { addLeave, getLeaveForDate } from '../utils/datosLicencias'
+import AgendaSemanal from '../components/dashboard/AgendaSemanal'
 
 function Dashboard() {
   const { navegar } = useNavegacion()
@@ -174,7 +175,9 @@ function Dashboard() {
   }
 
   return (
-    <div>
+    <div className="flex flex-col lg:flex-row lg:gap-6">
+      {/* Columna principal: Agenda del día — ancho contenido, no crece */}
+      <div className="min-w-0 lg:max-w-xl lg:flex-shrink-0">
       <h2 className="text-2xl font-bold text-gray-900 mb-4">
         Agenda del día
       </h2>
@@ -246,21 +249,13 @@ function Dashboard() {
               key={`${clase.cursoId}-${clase.desde}-${index}`}
               className="bg-white rounded-lg shadow p-6 border border-gray-200"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="text-lg font-semibold text-gray-900 mb-1">
+              <div className="mb-4">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-lg font-semibold text-gray-900">
                     {clase.desde}–{clase.hasta}
-                  </div>
-                  <div className="text-sm text-gray-600 mb-1">
-                    <span className="font-medium">Escuela:</span> {clase.escuelaNombre}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    <span className="font-medium">Curso:</span> {clase.cursoNombre}
-                  </div>
-                </div>
-                <div className="ml-4">
+                  </span>
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    className={`px-3 py-1 rounded-full text-sm font-medium shrink-0 ${
                       clase.asistenciaHecha
                         ? 'bg-green-100 text-green-800'
                         : 'bg-yellow-100 text-yellow-800'
@@ -268,6 +263,12 @@ function Dashboard() {
                   >
                     {clase.asistenciaHecha ? 'Hecha' : 'Pendiente'}
                   </span>
+                </div>
+                <div className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">Escuela:</span> {clase.escuelaNombre}
+                </div>
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">Curso:</span> {clase.cursoNombre}
                 </div>
               </div>
 
@@ -301,6 +302,12 @@ function Dashboard() {
           ))}
         </div>
       )}
+      </div>
+
+      {/* Panel derecho (desktop) / debajo (mobile): Agenda semanal — ocupa el resto del espacio */}
+      <div className="mt-6 lg:mt-0 lg:flex-1 lg:min-w-0">
+        <AgendaSemanal />
+      </div>
 
       {/* Modal Cargar licencia */}
       {showLicencias && (
