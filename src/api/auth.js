@@ -27,8 +27,9 @@ export {
  */
 export async function login(email, password) {
   const { data } = await apiClient.post('/api/login', { email, password })
-  const token = data?.data?.token
-  const user = data?.data?.user
+  // Laravel Sanctum puede devolver { token, user } o { data: { token, user } }
+  const token = data?.data?.token ?? data?.token
+  const user = data?.data?.user ?? data?.user
   if (token) {
     setToken(token)
     if (user) setStoredUser(user)

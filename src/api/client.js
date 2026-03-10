@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { getToken, clearSession } from './authStorage'
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const baseURL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? 'https://api.appdocentes.com' : 'http://localhost:8000')
 
 export const apiClient = axios.create({
   baseURL,
