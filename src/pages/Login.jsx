@@ -1,22 +1,32 @@
 import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
 
 function Login({ onLogin }) {
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setCargando(true)
-    
-    // Simulación de login (2 segundos)
-    setTimeout(() => {
-      setCargando(false)
-      // Navegar después del login
-      if (onLogin) {
-        onLogin()
+    setError('')
+    try {
+      await login(email, password)
+      if (onLogin) onLogin()
+      else window.location.hash = '/escuelas'
+    } catch (err) {
+      const status = err.response?.status
+      const msg = err.response?.data?.message ?? err.response?.data?.error
+      if (status === 422 || status === 401) {
+        setError(msg || 'Email o contraseña incorrectos.')
+      } else {
+        setError(msg || 'Error al iniciar sesión.')
       }
-    }, 2000)
+    } finally {
+      setCargando(false)
+    }
   }
 
   const handleOlvidePassword = () => {
@@ -84,6 +94,12 @@ function Login({ onLogin }) {
                 placeholder="••••••••"
               />
             </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm">
+                {error}
+              </div>
+            )}
 
             {/* Botón Ingresar */}
             <button

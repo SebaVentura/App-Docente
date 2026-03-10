@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
 import Login from '../pages/Login'
 import LayoutApp from './LayoutApp'
 import Escuelas from '../pages/Escuelas'
@@ -17,6 +18,7 @@ import DeclaracionJurada from '../pages/DeclaracionJurada'
 import Perfil from '../pages/Perfil'
 
 function Router() {
+  const { isAuthenticated, isLoadingAuth } = useAuth()
   const [ruta, setRuta] = useState(() => {
     // Inicializar con la ruta del hash o por defecto /login
     const hash = window.location.hash.slice(1)
@@ -45,9 +47,25 @@ function Router() {
 
   // Renderizar según la ruta
   const renderizarRuta = () => {
-    // Login (sin layout)
+    if (isLoadingAuth) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      )
+    }
+
     if (ruta === '/login') {
+      if (isAuthenticated) {
+        window.location.hash = '/escuelas'
+        return null
+      }
       return <Login onLogin={() => navegar('/escuelas')} />
+    }
+
+    if (!isAuthenticated) {
+      window.location.hash = '/login'
+      return null
     }
 
     // Rutas con layout

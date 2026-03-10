@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/nav/Sidebar'
 import BottomNav from '../components/nav/BottomNav'
 import Breadcrumb from '../components/Breadcrumb'
@@ -93,8 +94,10 @@ const obtenerBreadcrumb = (ruta) => {
 }
 
 function LayoutApp({ children }) {
+  const { logout } = useAuth()
   const [esMobile, setEsMobile] = useState(false)
   const [ruta, setRuta] = useState(() => window.location.hash.slice(1) || '/login')
+  const [cerrandoSesion, setCerrandoSesion] = useState(false)
 
   useEffect(() => {
     const verificarTamaño = () => {
@@ -115,8 +118,14 @@ function LayoutApp({ children }) {
     }
   }, [])
 
-  const handleCerrarSesion = () => {
-    window.location.hash = '/login'
+  const handleCerrarSesion = async () => {
+    if (cerrandoSesion) return
+    setCerrandoSesion(true)
+    try {
+      await logout()
+    } finally {
+      setCerrandoSesion(false)
+    }
   }
 
   const titulo = obtenerTitulo(ruta)
@@ -138,10 +147,12 @@ function LayoutApp({ children }) {
           </div>
           <button
             onClick={handleCerrarSesion}
+            disabled={cerrandoSesion}
             className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 
-                     rounded-lg hover:bg-gray-100 transition font-medium"
+                     rounded-lg hover:bg-gray-100 transition font-medium
+                     disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Cerrar sesión
+            {cerrandoSesion ? 'Cerrando...' : 'Cerrar sesión'}
           </button>
         </div>
       </header>
