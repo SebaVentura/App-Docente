@@ -46,14 +46,20 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const token = getToken()
-  if (token) {
+  const urlPath = config.url || ''
+
+  const isLoginEndpoint =
+    urlPath === '/api/login' ||
+    urlPath.endsWith('/api/login')
+
+  if (token && !isLoginEndpoint) {
     config.headers.Authorization = `Bearer ${token}`
   }
 
   if (isDev) {
     try {
       const finalBaseURL = config.baseURL || baseURL || ''
-      const url = `${finalBaseURL}${config.url || ''}`
+      const url = `${finalBaseURL}${urlPath}`
       const method = (config.method || 'get').toUpperCase()
       console.info('[apiClient][request]', {
         url,
